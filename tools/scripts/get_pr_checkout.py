@@ -40,8 +40,9 @@ Repository Specification Format:
     --always-clone-repos accepts "[org1|org2|...]/repo-name" format:
     - Tries each org in order until finding one with the target branch
     - All variants share the same repo name (and thus target directory)
-    - For devel: falls back to default branch if no match found
-    - For stable branches: fails if no matching branch found
+    - If the exact branch is missing, among dependency branches ``b`` where
+      ``target_branch.startswith(b + '-')``, pick the longest match; otherwise
+      fall back to devel
 
     Example: [ansible-automation-platform|ansible]/django-ansible-base
     - Tries ansible-automation-platform/django-ansible-base first
@@ -55,7 +56,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests  # type: ignore
 
@@ -107,7 +108,7 @@ def parse_all_github_pr_references(pr_body: str) -> list:
     return result
 
 
-def make_api_request(path: str, token: Optional[str], context: str = "") -> Optional[Dict]:
+def make_api_request(path: str, token: Optional[str], context: str = "") -> Optional[Union[Dict[str, Any], List[Any]]]:
     """
     Make a GitHub API request with authentication and error handling.
 
@@ -117,7 +118,7 @@ def make_api_request(path: str, token: Optional[str], context: str = "") -> Opti
         context: Optional context string for error messages (e.g., 'repo#123')
 
     Returns:
-        Parsed JSON response dict on success, None on error
+        Parsed JSON (object or array) on success, None on error
     """
     url = f'{GITHUB_API_URL}{path}'
     headers = {}
@@ -235,6 +236,42 @@ def branch_exists(repo: str, branch: str, token: Optional[str]) -> bool:
     return result is not None
 
 
+def list_repo_branches(repo: str, token: Optional[str]) -> Optional[List[str]]:
+    """
+    Return all branch names in a repository (paginated).
+
+    Returns None if any API page fails so callers can abort instead of
+    treating a failed listing as an empty branch set.
+    """
+    names: List[str] = []
+    page = 1
+    while True:
+        data = make_api_request(f'/repos/{repo}/branches?per_page=100&page={page}', token, context=repo)
+        if data is None:
+            return None
+        if data == []:
+            break
+        names.extend(item['name'] for item in data)
+        if len(data) < 100:
+            break
+        page += 1
+    return names
+
+
+def branch_matching_prefix(target_branch: str, branches: List[str]) -> Optional[str]:
+    """
+    Among branches that match target_branch.startswith(b + '-'), return the
+    longest match (by branch name length).
+
+    The trailing '-' boundary avoids false prefixes (e.g. ``foo-bar`` must not
+    match target ``foo-barbaz``).
+    """
+    matches = [b for b in branches if b and target_branch.startswith(b + '-')]
+    if not matches:
+        return None
+    return max(matches, key=len)
+
+
 def parse_and_validate_repo_specs(repo_specs: list) -> list:
     """
     Parse and validate --always-clone-repos arguments.
@@ -347,10 +384,20 @@ def process_explicit_requirements(pr_body: str, token: Optional[str]) -> list:
     return repos_to_clone
 
 
+def _find_repo_with_branch(repo_variants: list, branch: str, token: Optional[str]) -> Optional[str]:
+    """Return the first repo variant that has the given branch, or None."""
+    for repo_variant in repo_variants:
+        print(f"  Checking for branch '{branch}' in '{repo_variant}'...")
+        if branch_exists(repo_variant, branch, token):
+            print(f"  ✅ Found matching branch '{branch}' in '{repo_variant}'")
+            return repo_variant
+        print(f"  ℹ️  Branch '{branch}' not found in '{repo_variant}'")
+    return None
+
+
 def process_always_clone_repos(always_clone_repos: list, target_branch: str, token: Optional[str], repos_to_clone: list) -> None:
     """Process always-clone repos and add them to repos_to_clone list."""
     print(f"\nProcessing {len(always_clone_repos)} always-clone repo(s):")
-    errors = False
 
     for repo_variants in always_clone_repos:
         primary_repo = repo_variants[0]
@@ -361,36 +408,40 @@ def process_always_clone_repos(always_clone_repos: list, target_branch: str, tok
             print(f"  ⏭️  Skipping {primary_repo} - already in list from explicit requirement")
             continue
 
-        # Try to find a variant with the matching branch
-        matching_repo = None
-        for repo_variant in repo_variants:
-            print(f"  Checking for branch '{target_branch}' in '{repo_variant}'...")
-            if branch_exists(repo_variant, target_branch, token):
-                print(f"  ✅ Found matching branch '{target_branch}' in '{repo_variant}'")
-                matching_repo = repo_variant
-                break
-            else:
-                print(f"  ℹ️  Branch '{target_branch}' not found in '{repo_variant}'")
+        selected_branch = target_branch
+        matching_repo = _find_repo_with_branch(repo_variants, target_branch, token)
 
-        if matching_repo:
-            print(f"  + Adding {matching_repo}")
-            repos_to_clone.append(
-                {
-                    'target_dir': target_dir,
-                    'branch': target_branch,
-                    'clone_url': build_clone_url(matching_repo, token),
-                    'repo': matching_repo,
-                }
-            )
-        else:
-            print(f"##[error]❌ FATAL: No branch {target_branch} found in {repo_variants}")
-            errors = True
+        if not matching_repo:
+            # Variants are ordered: first org with a prefix match wins (do not
+            # pick the globally longest prefix across later orgs).
+            for repo_variant in repo_variants:
+                print(f"  ⚠️  Branch '{target_branch}' not found, looking for startswith prefix in '{repo_variant}'...")
+                branches = list_repo_branches(repo_variant, token)
+                if branches is None:
+                    print(f"##[error]❌ FATAL: Failed to list branches for '{repo_variant}'")
+                    sys.exit(1)
+                prefix_branch = branch_matching_prefix(target_branch, branches)
+                if prefix_branch:
+                    print(f"  ✅ Found prefix branch '{prefix_branch}' in '{repo_variant}'")
+                    matching_repo = repo_variant
+                    selected_branch = prefix_branch
+                    break
 
-    if errors:
-        print("##[error]")
-        print("##[error]Cannot proceed without knowing the target branch to avoid")
-        print("##[error]cloning incorrect dependency versions.")
-        sys.exit(1)
+        if not matching_repo:
+            # Final fallback: devel
+            selected_branch = "devel"
+            matching_repo = primary_repo
+            print(f"  ⚠️  Branch '{target_branch}' not found in any variant, falling back to '{selected_branch}' from '{matching_repo}'")
+
+        print(f"  + Adding {matching_repo} @ {selected_branch}")
+        repos_to_clone.append(
+            {
+                'target_dir': target_dir,
+                'branch': selected_branch,
+                'clone_url': build_clone_url(matching_repo, token),
+                'repo': matching_repo,
+            }
+        )
 
 
 def validate_no_duplicate_directories(repos_to_clone: list) -> dict:

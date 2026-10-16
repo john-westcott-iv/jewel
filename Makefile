@@ -20,12 +20,24 @@ COMPOSE_UP_OPTS ?=
 ADMIN_PASSWORD ?= $(shell $(PYTHON) -c "import secrets; print(secrets.token_urlsafe(20))")
 GATEWAY_ABS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 UNAME_S := $(shell uname -s)
+KEYCLOAK_REALM_INPUTS := tools/ansible/render-keycloak-realm.yml tools/ansible/vars/container_config.yml \
+	$(shell find tools/ansible/roles/keycloak -type f) container-startup.yml
+KEYCLOAK_TOKEN_SUBJECT := $(or $(KEYCLOAK_SUBJECT),$(word 2,$(MAKECMDGOALS)))
+KEYCLOAK_TOKEN_PREREQUISITES := keycloak-render $(if $(KEYCLOAK_TOKEN_SUBJECT),keycloak-reconcile)
+
+# Support `make token <subject>` in addition to the conventional
+# `make token KEYCLOAK_SUBJECT=<subject>` form.
+ifneq ($(KEYCLOAK_TOKEN_SUBJECT),)
+.PHONY: $(KEYCLOAK_TOKEN_SUBJECT)
+$(KEYCLOAK_TOKEN_SUBJECT):
+	@:
+endif
 
 .PHONY: PYTHON_VERSION clean git_hooks_config \
 	check lint check_ruff check_ruff_format \
 	docker-compose plumb update_django_ansible_base_hash \
 	collection requirements check-requirements \
-	ci-image ci-image-push
+	ci-image ci-image-push keycloak-render keycloak-reconcile token
 
 ## Get the version of python we are working with
 PYTHON_VERSION:
@@ -122,6 +134,17 @@ docker-compose-stage-cleanup:
 ## Fetch service key
 fetch-service-key:
 	ansible-playbook tools/ansible/fetch-service-key.yml -e @container-startup.yml
+
+## Reconcile Keycloak and mint a token: make token <user-or-client>
+token: $(KEYCLOAK_TOKEN_PREREQUISITES)
+	@tools/scripts/get_keycloak_token "$(KEYCLOAK_TOKEN_SUBJECT)"
+
+## Reconcile the Keycloak development realm without restarting containers
+keycloak-reconcile: tools/generated/keycloak.gateway.realm.json
+	ansible-playbook tools/ansible/reconcile-keycloak.yml \
+	    -e @tools/ansible/vars/container_config.yml \
+	    -e @container-startup.yml
+
 ## Migrate service data to services
 migrate-service-data:
 	ansible-playbook tools/ansible/migrate-service-data.yml -e @container-startup.yml
@@ -186,6 +209,18 @@ tools/generated/sources: collection tools/ansible/roles/sources/templates/Docker
 	ansible-playbook tools/ansible/generate-sources.yml \
 	    -e @tools/ansible/vars/container_config.yml \
 	    -e @container-startup.yml
+## Render the Keycloak realm import for local development
+keycloak-render: $(KEYCLOAK_REALM_INPUTS)
+	@if ! grep -Eq '^[[:space:]]*keycloak_enabled:[[:space:]]*[Tt]rue([[:space:]]|$$)' container-startup.yml; then \
+		echo "Keycloak is disabled in container-startup.yml; set keycloak_enabled: True before requesting a token." >&2; \
+		exit 1; \
+	fi
+	ansible-playbook tools/ansible/render-keycloak-realm.yml \
+	    -e @tools/ansible/vars/container_config.yml \
+	    -e @container-startup.yml
+
+tools/generated/keycloak.gateway.realm.json: keycloak-render
+	@test -f "$@"
 
 collection:
 	@if [ -d ansible.platform ]; then \

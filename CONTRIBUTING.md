@@ -79,6 +79,11 @@ $> make git_hooks_config
 
 This make target is a dependency of `make docker-compose`, which is used to launch a local instance directly from this repository. In this case, the above command is not required.
 
+To use the local Keycloak development provider, set `keycloak_enabled: True` in
+`container-startup.yml` before running `make docker-compose`. See the
+[Keycloak development environment](docs/authentication.md#keycloak-development-environment)
+for the configured authenticators and token helper.
+
 #### Development tools
 
 * **[uv](https://docs.astral.sh/uv/)**: Required for regenerating `requirements.txt` (`make requirements`). Install from https://docs.astral.sh/uv/.

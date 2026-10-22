@@ -1,4 +1,5 @@
 from ansible_base.lib.serializers.common import NamedCommonModelSerializer
+from ansible_base.lib.serializers.mixins import CleanTextMixin
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
@@ -8,7 +9,7 @@ from aap_gateway_api.models import ServiceCluster, ServiceKey
 DEPRECATED_FIELD_HELP_TEXT = "DEPRECATED: This field is no longer editable"
 
 
-class ServiceKeySerializerRead(NamedCommonModelSerializer):
+class ServiceKeySerializerRead(CleanTextMixin, NamedCommonModelSerializer):
     service_cluster = serializers.PrimaryKeyRelatedField(
         read_only=True,
         help_text=DEPRECATED_FIELD_HELP_TEXT,

@@ -1,0 +1,21 @@
+{
+  "enforced_apps": [
+    "aap_gateway_api"
+  ],
+  "allowed_missing": [
+    "aap_gateway_api.0023_health_check_interval_default",
+    "aap_gateway_api.0027_merge_0023_0026"
+  ],
+  "allowed_fingerprint_changes": [
+    "aap_gateway_api.0001_initial",
+    "aap_gateway_api.0005_alter_httpport_created_alter_httpport_created_by_and_more",
+    "aap_gateway_api.0007_servicetype_alter_servicecluster_service_type",
+    "aap_gateway_api.0008_route_is_internal_route",
+    "aap_gateway_api.0018_remove_controller_fallback_from_local_authenticators",
+    "aap_gateway_api.0019_remove_use_controller_password_from_user",
+    "aap_gateway_api.0026_servicecluster_outlier_detection_local_origin",
+    "aap_gateway_api.0027_merge_0025_0026",
+    "aap_gateway_api.0028_alter_servicekey_algorithm_and_more"
+  ],
+  "immutable_vcs_stages": []
+}

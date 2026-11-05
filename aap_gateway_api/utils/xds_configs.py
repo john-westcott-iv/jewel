@@ -1,3 +1,4 @@
+from cryptography.hazmat.backends import default_backend
 from django.conf import settings
 
 from aap_gateway_api.common.envoy import DOWNSTREAM_TLS_CONTEXT, EXT_AUTHZ_FILTER, HTTP_CONNECTION_MANAGER, HTTP_ROUTER, LUA_FILTER, STDOUT_ACCESS_LOG, TYPE_KEY
@@ -75,7 +76,7 @@ def network_manager_filter(http_filters=[], routes=[]):
 
 
 def transport_socket():
-    return {
+    ts = {
         "name": "envoy.transport_sockets.tls",
         "typed_config": {
             TYPE_KEY: DOWNSTREAM_TLS_CONTEXT,
@@ -87,13 +88,6 @@ def transport_socket():
                         "private_key": {"filename": settings.GATEWAY_KEY_FILE},
                     }
                 ],
-                # X25519MLKEM768 is a hybrid post-quantum curve (opt-in in Envoy 1.35+,
-                # default in 1.40+). Clients supporting ML-KEM will use it; others fall
-                # back to X25519 or P-256.
-                # Order matters: curves are tried in preference order.
-                "tls_params": {
-                    "ecdh_curves": ["X25519MLKEM768", "X25519", "P-256"],
-                },
                 "validation_context_sds_secret_config": {
                     "name": SDS_SECRET_CONFIG_NAME,
                     "sds_config": _rest_sds_config(),
@@ -101,6 +95,19 @@ def transport_socket():
             },
         },
     }
+
+    backend = default_backend()
+    if hasattr(backend, "_fips_enabled") and not backend._fips_enabled:
+        # X25519MLKEM768 is a hybrid post-quantum curve (opt-in in Envoy 1.35+,
+        # default in 1.40+). Clients supporting ML-KEM will use it; others fall
+        # back to X25519 or P-256.
+        # Order matters: curves are tried in preference order.
+        # X25519MLKEM768/X25519 aren't FIPS compliant
+        ts["typed_config"]["common_tls_context"]["tls_params"] = {
+            "ecdh_curves": ["X25519MLKEM768", "X25519", "P-256"],
+        }
+
+    return ts
 
 
 def _rest_sds_config() -> dict:

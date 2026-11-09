@@ -26,7 +26,8 @@ This repo is internal only at this time.
 ### Install prerequisites
 
 Please have the following prerequisites already installed on your development machine:
-  * docker
+  * podman (5.0 or later)
+  * podman-compose (1.6.0 or later)
   * make
   * openssl
   * gcc
@@ -60,17 +61,17 @@ This will be used to create the envoy configuration from [tools/configs/envoy.ym
 
 ### Run the environment
 
-* Log into quay.io: `docker login quay.io`
-* Start up your environment: `make docker-compose`
+* Log into quay.io: `podman login quay.io`
+* Start up your environment: `make podman-compose`
   * Alternatively, you can split it into standalone steps:
-    * `make docker-compose-basic` - Build & run the gateway containers
+    * `make podman-compose-basic` - Build & run the gateway containers
     * `make register-services` - Configure the proxy
     * `make plumb` - Plumb the side cars (below)
 
 This will:
-- `make docker-compose-basic`:
+- `make podman-compose-basic`:
   - build an `admin` user with random password (see value for `gateway_admin_password` in `container-startup.yml`)
-    - You can force your own password by setting the `ADMIN_PASSWORD` environment variable before running `make docker-compose`.
+    - You can force your own password by setting the `ADMIN_PASSWORD` environment variable before running `make podman-compose`.
 - `make register-services`:
   - create http ports, services and routes you have defined in your `proxy.yml` file
 - `make plumb`:
@@ -97,7 +98,7 @@ See [`.cursor/README.md`](.cursor/README.md)
 
 ## Side cars
 
-There are additional services available to be started alongside gateway to enable development. We call these side car containers. When you run an initial `make docker-compose` a file called `container-startup.yml` will be created at the root of your project. If you haven't run `make docker-compose` yet and want to generate the file you can run `make container-startup.yml".
+There are additional services available to be started alongside gateway to enable development. We call these side car containers. When you run an initial `make podman-compose` a file called `container-startup.yml` will be created at the root of your project. If you haven't run `make podman-compose` yet and want to generate the file you can run `make container-startup.yml".
 
 At the beginning of you file you will see the following options:
 ```
@@ -120,7 +121,7 @@ By default, all side cars are disabled. The next section of the file has lines w
 
 These can be any valid true or false statements ansible can handle. A `true` value indicates that the container should be started and a `false` leaves the container disabled.
 
-There are two times these variables are checked. First when we run `make docker-compose` an additional step to initialize any containers will be run. These steps vary per container type but all are idempotent so running them multiple times should not cause issues.
+There are two times these variables are checked. First when we run `make podman-compose` an additional step to initialize any containers will be run. These steps vary per container type but all are idempotent so running them multiple times should not cause issues.
 
 Secondly, we have a plumb playbook which will configure your gateway instance to use the containers. When running the plumb playbook this will only plumb for containers which are initialized.
 

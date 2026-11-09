@@ -494,12 +494,6 @@ django-debug-toolbar==5.2.0 \
     # via
     #   -r requirements_dev.txt
     #   -r requirements_test.txt
-docker==7.2.0 \
-    --hash=sha256:a3f45fdeb9165e2d25d9a1d02ddf3bc70fb572cf5ebbf9b58558c22caf29b71f \
-    --hash=sha256:cebb93773d334f778e023a7ee352a8d6e13ab1bd3b863a4d4a59dec897df43ac
-    # via
-    #   -r requirements_dev.txt
-    #   tox-docker
 execnet==2.1.2 \
     --hash=sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd \
     --hash=sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec
@@ -786,6 +780,10 @@ pluggy==1.6.0 \
     #   pytest
     #   pytest-cov
     #   tox
+podman-compose==1.6.0 \
+    --hash=sha256:98e48af25d44c10ecef948163bfcca002e32aa8bbb7e66593fbd4faff7270c30 \
+    --hash=sha256:c83fd9bcbaa635100d581ce52a7a4b712ee0d457481232aff392efe3ebc5a217
+    # via -r requirements_dev.txt
 prompt-toolkit==3.0.53 \
     --hash=sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2 \
     --hash=sha256:9ec8a0ad96d5c56148b3f914aa79c1564c3fde5d2e6b876e7bc327e353cf8fa6
@@ -951,6 +949,10 @@ python-discovery==1.6.1 \
     # via
     #   tox
     #   virtualenv
+python-dotenv==1.2.4 \
+    --hash=sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc \
+    --hash=sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0
+    # via podman-compose
 pyyaml==6.0.2 \
     --hash=sha256:01179a4a8559ab5de078078f37e5c1a30d76bb88519906844fd7bdea1b7729ff \
     --hash=sha256:0833f8694549e586547b576dcfaba4a6b55b9e96098b36cdc7ebefe667dfed48 \
@@ -1010,6 +1012,7 @@ pyyaml==6.0.2 \
     #   -r requirements_dev.txt
     #   ansible-core
     #   jsonschema-path
+    #   podman-compose
 redis==8.1.0 \
     --hash=sha256:6e1a19beef9225c83efd689c7e6b7da2d5215b1f42cd13b7fc3714d0a09c7b25 \
     --hash=sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb
@@ -1223,12 +1226,6 @@ tomli-w==1.2.0 \
 tox==4.58.0 \
     --hash=sha256:ab0b126a04dd56bc18e6d216386db09335247f2289b54cf534deb5c4ae3a8d2e \
     --hash=sha256:dcae21f5f015f3a67658e35644cce0d1aa0dedcd06f3927f95d84e1717f6cea5
-    # via
-    #   -r requirements_dev.txt
-    #   tox-docker
-tox-docker==5.0.0 \
-    --hash=sha256:3cbfe70713910b9dbb9f74e20a5c42f19da42d375bac7d6a3ccc11aed0738d7a \
-    --hash=sha256:7dd7293ea286dff422eab6c23a70652147b275eb436c02e97a90ac59ba41f8a8
     # via -r requirements_dev.txt
 traitlets==5.16.1 \
     --hash=sha256:ed900c2b631aa3a112811139fa97b8d2c3bad5e989656bba4b7e52c7852c18c1 \
@@ -1248,7 +1245,6 @@ urllib3==2.8.0 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via
     #   -c requirements.txt
-    #   docker
     #   requests
 vcs-versioning==2.4.1 \
     --hash=sha256:b7089ec9bef67b2cad82148366e8eac4d63173f440ec62628282b59eb96bbcb0 \

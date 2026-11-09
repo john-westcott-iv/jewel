@@ -77,7 +77,7 @@ This repository uses git hooks to catch linter issues locally before they reach 
 $> make git_hooks_config
 ```
 
-This make target is a dependency of `make docker-compose`, which is used to launch a local instance directly from this repository. In this case, the above command is not required.
+This make target is a dependency of `make podman-compose`, which is used to launch a local instance directly from this repository. In this case, the above command is not required.
 
 #### Development tools
 

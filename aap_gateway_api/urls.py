@@ -11,6 +11,7 @@ from django.urls import include, path, re_path, register_converter
 from flags.urls import flagged_path
 
 from aap_gateway_api import views
+from aap_gateway_api.api_documentation import GatewaySwaggerView
 from aap_gateway_api.router import router
 from aap_gateway_api.views.api.envoy.rest_control_plane import ClusterDiscoverServiceView, ListenerDiscoverServiceView, SecretDiscoverServiceView
 
@@ -26,8 +27,9 @@ team_access_assignment_view = TeamAccessAssignmentViewSet.as_view({'get': 'list'
 register_converter(IntOrUUIDConverter, "int_or_uuid")
 
 urlpatterns = [
+    path(f'{API_GATEWAY_V1_PREFIX}docs/', GatewaySwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     # Load base URLs first
-    path(API_GATEWAY_V1_PREFIX, include(api_version_urls)),
+    path(API_GATEWAY_V1_PREFIX, include([url for url in api_version_urls if getattr(url, 'name', None) != 'swagger-ui'])),
     path('api/gateway/', include(api_urls)),
     path('', include(root_urls)),
     # Extra DAB RBAC views that need to be included because we exclude it from api_version_urls

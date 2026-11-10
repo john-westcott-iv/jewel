@@ -50,6 +50,25 @@ def test_logged_basic_auth_invalid_returns_basic_challenge(preference_manager):
     assert response["WWW-Authenticate"] == 'Basic realm="api"'
 
 
+def test_logged_basic_auth_invalid_from_swagger_has_no_challenge(preference_manager):
+    class AuthenticationChallengeView(APIView):
+        authentication_classes = api_settings.DEFAULT_AUTHENTICATION_CLASSES
+
+        def get(self, request):
+            return Response()
+
+    request = APIRequestFactory().get(
+        "/authentication-challenge/",
+        HTTP_AUTHORIZATION="Basic " + base64.b64encode("admin:wrongPassw0rd".encode("utf-8")).decode("utf-8"),
+        HTTP_X_AAP_SWAGGER_UI="1",
+    )
+    with preference_manager.set("proxy", "gateway_basic_auth_enabled", True):
+        response = AuthenticationChallengeView.as_view()(request)
+
+    assert response.status_code == 401
+    assert "WWW-Authenticate" not in response
+
+
 def test_logged_basic_auth_disabled_has_no_default_challenge(preference_manager):
     request = APIRequestFactory().get("/authentication-challenge/")
 

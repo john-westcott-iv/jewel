@@ -17,6 +17,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+from aap_gateway_api.api_documentation import SWAGGER_UI_REQUEST_HEADER, SWAGGER_UI_REQUEST_HEADER_VALUE
 from aap_gateway_api.models import ServiceAPIRoute
 from aap_gateway_api.utils.preferences import PreferenceCorruptError
 from aap_gateway_api.views.api import GatewayRootView  # noqa: F401
@@ -64,7 +65,11 @@ def gateway_exception_handler(exc, context):
     if isinstance(exc, FieldError):
         logger.warning("FieldError in API request", exc_info=exc)
         exc = ParseError("Invalid field in request.")
-    return exception_handler(exc, context)
+    response = exception_handler(exc, context)
+    request = context.get("request")
+    if response is not None and request is not None and request.headers.get(SWAGGER_UI_REQUEST_HEADER) == SWAGGER_UI_REQUEST_HEADER_VALUE:
+        response.headers.pop("WWW-Authenticate", None)
+    return response
 
 
 @extend_schema(

@@ -36,10 +36,17 @@ jobs:
             --always-clone-repos '[ansible-automation-platform|ansible]/django-ansible-base' \
             --always-clone-repos ansible/ansible.platform
 
+      - name: Install Podman
+        uses: redhat-actions/podman-install@072203a124c069d8fc8621c1a33f9fa9510ae2e1 # v1.1.1
+
       - name: Install python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
+
+      - name: Install test dependencies
+        run: |
+          pip3.12 install --upgrade -r requirements/requirements_dev.txt -r ansible.platform/requirements/requirements_dev.txt
 
       - name: Configure faster xDS refresh for CI
         run: |
@@ -47,7 +54,7 @@ jobs:
           echo "Set xds_refresh_delay_seconds to 5 seconds for faster CI feedback"
 
       - name: Start the dev environment
-        run: COMPOSE_UP_OPTS='-d' make docker-compose-basic
+        run: COMPOSE_UP_OPTS='-d' make podman-compose-basic
 
       - name: Wait for gateway to be ready
         run: |
@@ -66,7 +73,7 @@ jobs:
 
           if [ $attempt -eq $max_attempts ]; then
             echo "❌ Gateway did not become ready in time"
-            docker compose -f tools/generated/docker-compose.yml logs
+            podman-compose --in-pod false -f tools/generated/compose.yml logs
             exit 1
           fi
 
@@ -231,4 +238,4 @@ jobs:
 
       - name: Dump the container logs on failure
         if: failure()
-        run: docker compose -f tools/generated/docker-compose.yml logs
+        run: podman-compose --in-pod false -f tools/generated/compose.yml logs

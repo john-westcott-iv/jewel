@@ -1,4 +1,4 @@
-cryptography >= 46.0.7 # CVE-2026-39892
+cryptography >= 49.0.0 # CVE-2026-69249: Duplicate self-signed intermediates can cause exponential path-building
 # NOTE: When updating Django version, also update requirements/constraints_django52.txt
 Django>=5.2.8,<5.3 # Upgrade to Django 5.2 LTS - see AAP-55610 and CVE-2025-64459
 djangorestframework>=3.18.2  # see AAP-99716
